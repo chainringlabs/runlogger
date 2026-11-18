@@ -1,8 +1,8 @@
 use super::*;
-use chrono::NaiveDate;
+use jiff::civil::{date, Date};
 
-fn day(d: u32) -> NaiveDate {
-    NaiveDate::from_ymd_opt(2025, 6, d).unwrap()
+fn day(d: i8) -> Date {
+    date(2025, 6, d)
 }
 
 // @spec AN-008

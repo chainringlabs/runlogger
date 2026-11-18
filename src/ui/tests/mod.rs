@@ -3,7 +3,10 @@ use crate::app::{App, Screen};
 use crate::models::analytics::{Analytics, DailyData, MonthlyData};
 use crate::models::run::Run;
 use crate::test_support::{buffer_text, draw_app, locate};
-use chrono::{NaiveDate, NaiveTime};
+use jiff::{
+    civil::{date, time},
+    ToSpan,
+};
 use ratatui::{
     backend::TestBackend,
     buffer::Buffer,
@@ -34,11 +37,11 @@ fn assert_bold_red(buf: &Buffer, needle: &str) {
 }
 
 fn many_runs(n: i64) -> Vec<Run> {
-    let first = NaiveDate::from_ymd_opt(2026, 1, 1).unwrap();
+    let first = date(2026, 1, 1);
     (0..n)
         .map(|i| {
-            let date = first + chrono::Duration::days(i);
-            let time = NaiveTime::from_hms_opt(7, 0, 0).unwrap();
+            let date = first + i.days();
+            let time = time(7, 0, 0, 0);
             let mut run = Run::new(date, time, 1.0, None).unwrap();
             run.id = Some(i + 1);
             run
@@ -47,10 +50,10 @@ fn many_runs(n: i64) -> Vec<Run> {
 }
 
 fn analytics_screen(today_goal_met: bool) -> App {
-    let first = NaiveDate::from_ymd_opt(2025, 6, 2).unwrap();
+    let first = date(2025, 6, 2);
     let mut recent_trend: Vec<DailyData> = (0..14)
         .map(|i| DailyData {
-            date: first + chrono::Duration::days(i),
+            date: first + i.days(),
             distance: 0.0,
         })
         .collect();

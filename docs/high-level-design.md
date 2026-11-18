@@ -85,6 +85,7 @@ All state lives in one `App` value owned by the event loop; each screen has its 
 | Goal unit | Sum of all runs on a local calendar day ≥ 1.0 mile | Single run must reach 1 mile | Several short runs in one day honor the habit just as well. |
 | Generous goal accounting | An unfinished today never breaks the streak; totals are compared with a rounding tolerance | Strict accounting | The streak should reflect the habit, not the time of day or floating-point artifacts. |
 | Navigation model | Esc prefix for commands from the text form; single keys elsewhere | Function keys; Ctrl shortcuts | Works on every terminal and keeps every printable character available for typing. |
+| Date and time library | `jiff` | `time`; `chrono` | Every goal and streak rule turns on the user's local calendar day; `jiff` reads the local zone in one call that works in any process, tests included, and keeps zone-free dates and times as distinct types from instants. `time` cannot read the local zone in a multi-threaded process on Linux; `chrono` is unmaintained. |
 | One editing path | Edits reuse the Quick Entry form | Inline editing in Run List | One set of parsing and validation rules for new and edited runs. |
 
 ## Success Metrics
@@ -99,4 +100,4 @@ All state lives in one `App` value owned by the event loop; each screen has its 
 - Component design docs and specs: `docs/intent/`
 - Arrow index and per-component status: `docs/arrows/index.yaml`, `docs/arrows/*.md`
 - User-facing documentation: `README.md`
-- Libraries: `ratatui` 0.30, `crossterm` 0.29, `rusqlite` 0.40 (bundled SQLite), `chrono` 0.4, `etcetera` 0.11, `anyhow` 1
+- Libraries: `ratatui` 0.30, `crossterm` 0.29, `rusqlite` 0.42 (bundled SQLite), `jiff` 1, `etcetera` 0.11, `anyhow` 1

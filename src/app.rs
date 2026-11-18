@@ -1,7 +1,7 @@
 use crate::logic::validation;
 use crate::models::analytics::Analytics;
 use crate::models::run::Run;
-use chrono::{Local, NaiveDate};
+use jiff::{civil::Date, ZonedDateTime};
 use ratatui::widgets::TableState;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -37,7 +37,7 @@ pub struct QuickEntryState {
 impl QuickEntryState {
     // @spec QE-001
     pub fn new() -> Self {
-        let now = Local::now().naive_local();
+        let now = ZonedDateTime::now().datetime();
         Self {
             date: validation::format_date(&now.date()),
             time: validation::format_time(&now.time()),
@@ -53,7 +53,7 @@ impl QuickEntryState {
 
     // @spec QE-007
     pub fn clear(&mut self) {
-        let now = Local::now().naive_local();
+        let now = ZonedDateTime::now().datetime();
         self.date = validation::format_date(&now.date());
         self.time = validation::format_time(&now.time());
         self.distance.clear();
@@ -69,7 +69,7 @@ impl QuickEntryState {
     /// Keeps an unedited Date showing today, so a form left open past
     /// midnight logs to the new day.
     // @spec QE-025
-    pub fn follow_clock(&mut self, today: NaiveDate) {
+    pub fn follow_clock(&mut self, today: Date) {
         if !self.date_edited {
             self.date = validation::format_date(&today);
         }
@@ -167,7 +167,7 @@ pub struct AnalyticsState {
     pub analytics: Analytics,
     pub error_message: Option<String>,
     /// The date `analytics` was computed for.
-    pub computed_for: Option<NaiveDate>,
+    pub computed_for: Option<Date>,
 }
 
 impl AnalyticsState {
@@ -216,7 +216,7 @@ impl App {
     }
 
     /// Called before every frame with today's date.
-    pub fn tick(&mut self, today: NaiveDate) {
+    pub fn tick(&mut self, today: Date) {
         self.quick_entry_state.follow_clock(today);
     }
 

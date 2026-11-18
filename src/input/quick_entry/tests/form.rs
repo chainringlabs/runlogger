@@ -143,8 +143,8 @@ fn esc_esc_clears_the_form_and_leaves_edit_mode() {
     assert_eq!(state.editing_run_id, None);
 }
 
-fn day(y: i32, m: u32, d: u32) -> NaiveDate {
-    NaiveDate::from_ymd_opt(y, m, d).unwrap()
+fn day(y: i16, m: i8, d: i8) -> Date {
+    date(y, m, d)
 }
 
 // @spec QE-025

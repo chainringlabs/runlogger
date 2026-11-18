@@ -31,7 +31,7 @@ pub(super) fn render_chart(f: &mut Frame, area: Rect, state: &AnalyticsState) {
     let trend = &state.analytics.recent_trend;
     let day_rows = area.height.saturating_sub(4) as usize; // borders + 2 header lines
     for day_data in trend.iter().skip(trend.len().saturating_sub(day_rows)) {
-        let date_str = day_data.date.format("%m/%d").to_string();
+        let date_str = day_data.date.strftime("%m/%d").to_string();
         let distance_str = format_miles(day_data.distance);
 
         let style = if goal_met(day_data.distance) {

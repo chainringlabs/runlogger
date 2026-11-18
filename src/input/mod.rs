@@ -1,7 +1,7 @@
 use crate::app::{App, Screen};
 use crate::{db, logic};
-use chrono::NaiveDate;
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+use jiff::{civil::Date, ZonedDateTime};
 use ratatui::widgets::TableState;
 use rusqlite::Connection;
 
@@ -121,19 +121,19 @@ pub(super) fn load_runs(app: &mut App, conn: &Connection) {
 
 /// Recomputes Analytics when the date has changed since they were computed.
 // @spec AN-008
-pub fn refresh_analytics_if_stale(app: &mut App, conn: &Connection, today: NaiveDate) {
+pub fn refresh_analytics_if_stale(app: &mut App, conn: &Connection, today: Date) {
     if app.screen == Screen::Analytics && app.analytics_state.computed_for != Some(today) {
         load_analytics_for(app, conn, today);
     }
 }
 
 pub(super) fn load_analytics(app: &mut App, conn: &Connection) {
-    load_analytics_for(app, conn, chrono::Local::now().date_naive());
+    load_analytics_for(app, conn, ZonedDateTime::now().date());
 }
 
 /// Computes Analytics as of `today`. A failed read shows on Analytics instead.
 // @spec AN-008, AN-014
-pub(super) fn load_analytics_for(app: &mut App, conn: &Connection, today: NaiveDate) {
+pub(super) fn load_analytics_for(app: &mut App, conn: &Connection, today: Date) {
     let state = &mut app.analytics_state;
     state.computed_for = Some(today);
     match db::queries::get_all_runs(conn) {

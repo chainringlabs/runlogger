@@ -1,13 +1,16 @@
-use crate::models::run::Run;
+use crate::models::run::{whole_seconds, Run};
 use anyhow::{anyhow, Context, Result};
-use chrono::{DateTime, NaiveDate, NaiveTime, Timelike, Utc};
+use jiff::{
+    civil::{Date, Time},
+    Timestamp,
+};
 use rusqlite::{params, types::Value, Connection, Params};
 
 /// Storage failures callers need to tell apart from generic SQLite errors.
 #[derive(Debug, thiserror::Error)]
 pub enum StorageError {
     #[error("Another run already starts at {date} {time}")]
-    DuplicateStart { date: NaiveDate, time: NaiveTime },
+    DuplicateStart { date: Date, time: Time },
     #[error("This database was written by a newer version of Run Logger (schema {found}; this version supports {supported})")]
     NewerSchema { found: i64, supported: i64 },
 }
@@ -22,11 +25,11 @@ pub fn insert_run(conn: &Connection, run: &Run) -> Result<i64> {
         "INSERT INTO runs (date, time_started, distance_miles, note, created_at)
          VALUES (?1, ?2, ?3, ?4, ?5)",
         params![
-            run.date.to_string(),
-            run.time_started.format(TIME_FORMAT).to_string(),
+            run.date.strftime(DATE_FORMAT).to_string(),
+            run.time_started.strftime(TIME_FORMAT).to_string(),
             run.distance_miles,
             run.note,
-            run.created_at.to_rfc3339(),
+            run.created_at.to_string(),
         ],
     )
     .map_err(|e| write_error(e, run, "Failed to insert run"))?;
@@ -55,13 +58,9 @@ fn write_error(e: rusqlite::Error, run: &Run, context: &'static str) -> anyhow::
             if f.extended_code == rusqlite::ffi::SQLITE_CONSTRAINT_UNIQUE
     );
     if duplicate {
-        let time = run
-            .time_started
-            .with_nanosecond(0)
-            .unwrap_or(run.time_started);
         anyhow::Error::new(StorageError::DuplicateStart {
             date: run.date,
-            time,
+            time: whole_seconds(run.time_started),
         })
     } else {
         anyhow::Error::new(e).context(context)
@@ -102,16 +101,15 @@ fn to_run(row: StoredRun) -> Result<Run> {
     let unreadable =
         |field: &str, value: &str| anyhow!("Run {id} has an unreadable {field}: {value:?}");
 
-    let date = NaiveDate::parse_from_str(&row.date, DATE_FORMAT)
-        .map_err(|_| unreadable("date", &row.date))?;
+    let date = Date::strptime(DATE_FORMAT, &row.date).map_err(|_| unreadable("date", &row.date))?;
     // Older versions stored fractional seconds; accept them and drop the fraction.
-    let time_started = NaiveTime::parse_from_str(&row.time_started, "%H:%M:%S%.f")
-        .ok()
-        .and_then(|t| t.with_nanosecond(0))
-        .ok_or_else(|| unreadable("start time", &row.time_started))?;
-    let created_at = DateTime::parse_from_rfc3339(&row.created_at)
-        .map_err(|_| unreadable("creation timestamp", &row.created_at))?
-        .with_timezone(&Utc);
+    let time_started = Time::strptime("%H:%M:%S%.f", &row.time_started)
+        .map(whole_seconds)
+        .map_err(|_| unreadable("start time", &row.time_started))?;
+    let created_at = row
+        .created_at
+        .parse::<Timestamp>()
+        .map_err(|_| unreadable("creation timestamp", &row.created_at))?;
     let distance_miles = match &row.distance_miles {
         Value::Real(miles) => *miles,
         Value::Integer(miles) => *miles as f64,
@@ -138,8 +136,8 @@ pub fn update_run(conn: &Connection, run: &Run) -> Result<()> {
     conn.execute(
         "UPDATE runs SET date = ?1, time_started = ?2, distance_miles = ?3, note = ?4 WHERE id = ?5",
         params![
-            run.date.to_string(),
-            run.time_started.format(TIME_FORMAT).to_string(),
+            run.date.strftime(DATE_FORMAT).to_string(),
+            run.time_started.strftime(TIME_FORMAT).to_string(),
             run.distance_miles,
             run.note,
             id,

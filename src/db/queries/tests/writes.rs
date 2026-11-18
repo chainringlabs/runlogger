@@ -1,15 +1,11 @@
 use super::*;
 
 /// The write was rejected as a duplicate of an existing run's date and start time.
-fn assert_duplicate(
-    err: &anyhow::Error,
-    (y, m, d): (i32, u32, u32),
-    (h, min, sec): (u32, u32, u32),
-) {
+fn assert_duplicate(err: &anyhow::Error, (y, m, d): (i16, i8, i8), (h, min, sec): (i8, i8, i8)) {
     match err.downcast_ref::<StorageError>() {
         Some(StorageError::DuplicateStart { date, time }) => {
-            assert_eq!(*date, NaiveDate::from_ymd_opt(y, m, d).unwrap());
-            assert_eq!(*time, NaiveTime::from_hms_opt(h, min, sec).unwrap());
+            assert_eq!(*date, civil::date(y, m, d));
+            assert_eq!(*time, civil::time(h, min, sec, 0));
         }
         _ => panic!("not a DuplicateStart error: {err:#}"),
     }
@@ -19,11 +15,11 @@ fn assert_duplicate(
 #[test]
 fn insert_and_update_store_whole_second_start_times() {
     let conn = memory_db();
-    let precise = NaiveTime::from_hms_nano_opt(7, 15, 30, 165_846_000).unwrap();
+    let precise = civil::time(7, 15, 30, 165_846_000);
     let id = insert_run(&conn, &run_at(precise)).unwrap();
     assert_eq!(raw_time(&conn, id), "07:15:30");
 
-    let mut edited = run_at(NaiveTime::from_hms_nano_opt(8, 0, 1, 5).unwrap());
+    let mut edited = run_at(civil::time(8, 0, 1, 5));
     edited.id = Some(id);
     update_run(&conn, &edited).unwrap();
     assert_eq!(raw_time(&conn, id), "08:00:01");
@@ -98,16 +94,24 @@ fn date_is_stored_as_zero_padded_local_calendar_text() {
 #[test]
 fn creation_timestamp_is_stored_as_utc_rfc3339_at_creation() {
     let conn = memory_db();
-    let before = Utc::now();
+    let before = Timestamp::now();
     let run = run_on((2026, 10, 1), (7, 0, 0), 1.0, None);
-    let after = Utc::now();
+    let after = Timestamp::now();
     let id = insert_run(&conn, &run).unwrap();
 
     let stored = raw_text(&conn, id, "created_at");
-    let parsed = DateTime::parse_from_rfc3339(&stored).unwrap();
-    assert_eq!(parsed.offset().local_minus_utc(), 0, "{stored}");
-    assert_eq!(parsed.with_timezone(&Utc), run.created_at);
+    let parsed: Timestamp = stored.parse().unwrap();
+    assert_eq!(parsed, run.created_at);
     assert!(before <= run.created_at && run.created_at <= after);
+}
+
+// @spec STORE-008
+#[test]
+fn creation_timestamp_is_written_with_a_z_suffix() {
+    let conn = memory_db();
+    let id = insert_run(&conn, &run_on((2026, 10, 1), (7, 0, 0), 1.0, None)).unwrap();
+    let stored = raw_text(&conn, id, "created_at");
+    assert!(stored.ends_with('Z'), "{stored}");
 }
 
 // @spec STORE-009
@@ -131,9 +135,7 @@ fn update_changes_fields_by_id_and_keeps_id_and_creation_timestamp() {
 
     let mut edited = run_on((2026, 10, 4), (9, 15, 30), 6.5, Some("tempo"));
     edited.id = Some(id);
-    edited.created_at = DateTime::parse_from_rfc3339("2030-01-01T00:00:00Z")
-        .unwrap()
-        .with_timezone(&Utc);
+    edited.created_at = "2030-01-01T00:00:00Z".parse().unwrap();
     update_run(&conn, &edited).unwrap();
 
     let expected = format!("2026-10-04 09:15:30 6.5 tempo {created}");

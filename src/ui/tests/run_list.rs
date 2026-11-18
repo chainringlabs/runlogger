@@ -29,7 +29,7 @@ fn run_list_scrolls_to_keep_the_selection_visible() {
     let date_of = |app: &App, i: usize| {
         app.run_list_state.runs[i]
             .date
-            .format("%Y-%m-%d")
+            .strftime("%Y-%m-%d")
             .to_string()
     };
 

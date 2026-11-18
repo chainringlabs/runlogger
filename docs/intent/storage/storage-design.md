@@ -61,13 +61,13 @@ The pattern matches only the shape older versions wrote — `HH:MM:SS`, a dot, a
 
 | Column | Rust type | Written as | Read back with |
 |---|---|---|---|
-| `date` | `NaiveDate` | `NaiveDate::to_string()` → `YYYY-MM-DD` | `parse_from_str("%Y-%m-%d")` |
-| `time_started` | `NaiveTime` | `format("%H:%M:%S")` — whole seconds, whatever the value's precision | `parse_from_str("%H:%M:%S%.f")`, then truncated to whole seconds |
+| `date` | `jiff::civil::Date` | `strftime("%Y-%m-%d")` → `YYYY-MM-DD` | `strptime("%Y-%m-%d")` |
+| `time_started` | `jiff::civil::Time` | `strftime("%H:%M:%S")` — whole seconds, whatever the value's precision | `strptime("%H:%M:%S%.f")`, then truncated to whole seconds |
 | `distance_miles` | `f64` | REAL, miles | REAL |
 | `note` | `Option<String>` | TEXT or NULL | TEXT or NULL |
-| `created_at` | `DateTime<Utc>` | `to_rfc3339()` | `parse_from_rfc3339` → UTC |
+| `created_at` | `jiff::Timestamp` | `to_string()` — RFC 3339 in UTC with a `Z` suffix | `str::parse::<Timestamp>()` — any RFC 3339 offset, `Z` or numeric, converted to UTC |
 
-Date and start time are *naive local* values — no time zone — because the daily goal is judged by the user's local calendar day. `created_at` is a UTC audit timestamp set by `Run::new` and never displayed.
+Date and start time are *naive local* values — no time zone — because the daily goal is judged by the user's local calendar day. `created_at` is a UTC audit timestamp set by `Run::new` and never displayed, sorted or filtered; reads accept a numeric offset such as `+00:00` as well as `Z`, so a timestamp written in either form of RFC 3339 stays readable.
 
 Storage writes start times in whole seconds itself rather than trusting callers to supply whole-second values, and reads tolerate a fractional part so that rows written before this rule remain readable. A run read back always carries a whole-second start time.
 
@@ -118,4 +118,4 @@ None.
 - Tests: listed in `docs/arrows/storage.md`
 - Specs: `docs/intent/storage/storage-specs.md`
 - Consumers: Quick Entry (`QE`) for insert/update; Run List (`RL`) for read/delete; Analytics (`AN`) for read; Navigation (`NAV`) for startup and error propagation
-- External: `rusqlite` 0.40 (bundled SQLite), `chrono` 0.4, `etcetera` 0.11, `anyhow` 1
+- External: `rusqlite` 0.42 (bundled SQLite), `jiff` 1, `etcetera` 0.11, `anyhow` 1
