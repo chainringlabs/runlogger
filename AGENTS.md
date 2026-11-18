@@ -7,7 +7,7 @@ A single-user terminal app for logging daily runs and tracking a streak toward t
 - Language: Rust (2021 edition)
 - Framework: Ratatui (TUI) with the Crossterm backend
 - Database: SQLite via `rusqlite` (bundled), one file at `$XDG_DATA_HOME/runlogger/runs.db` (default `~/.local/share/runlogger/runs.db`) on Linux and macOS
-- Other: `chrono` (dates/times), `anyhow` / `thiserror` (errors), `etcetera` (XDG base directories)
+- Other: `jiff` (dates/times), `anyhow` / `thiserror` (errors), `etcetera` (XDG base directories)
 
 ## Commands
 - `cargo run --release` — Build and run the app

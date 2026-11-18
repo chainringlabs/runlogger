@@ -12,11 +12,11 @@ fn time_refreshes_to_now_after_a_new_run_is_saved() {
 
     assert_eq!(run_count(&conn), 1);
     assert_eq!(qe(&app).date, "2026-10-01");
-    let refreshed = chrono::NaiveTime::parse_from_str(&qe(&app).time, "%H:%M:%S")
+    let refreshed = jiff::civil::Time::strptime("%H:%M:%S", &qe(&app).time)
         .unwrap_or_else(|_| panic!("not HH:MM:SS: {:?}", qe(&app).time));
-    let now = chrono::Local::now().naive_local().time();
+    let now = ZonedDateTime::now().time();
     assert!(
-        (now - refreshed).num_seconds().abs() <= 2,
+        now.duration_since(refreshed).as_secs().abs() <= 2,
         "{refreshed} vs {now}"
     );
 }
@@ -26,8 +26,8 @@ fn time_refreshes_to_now_after_a_new_run_is_saved() {
 fn future_date_is_rejected_before_distance_and_nothing_is_saved() {
     let conn = memory_db();
     let mut app = App::new();
-    let tomorrow = chrono::Local::now().date_naive() + chrono::Duration::days(1);
-    app.quick_entry_state.date = tomorrow.format("%Y-%m-%d").to_string();
+    let tomorrow = ZonedDateTime::now().date().tomorrow().unwrap();
+    app.quick_entry_state.date = tomorrow.strftime("%Y-%m-%d").to_string();
     press(&mut app, &conn, &[key(KeyCode::Enter)]);
 
     assert_eq!(

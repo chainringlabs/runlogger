@@ -11,11 +11,8 @@ fn submitted_slash_date_is_saved_as_that_date() {
     assert_eq!(app.quick_entry_state.error_message, None);
     let runs = db::queries::get_all_runs(&conn).unwrap();
     assert_eq!(runs.len(), 1);
-    assert_eq!(runs[0].date, NaiveDate::from_ymd_opt(2020, 3, 7).unwrap());
-    assert_eq!(
-        runs[0].time_started,
-        NaiveTime::from_hms_opt(7, 15, 0).unwrap()
-    );
+    assert_eq!(runs[0].date, date(2020, 3, 7));
+    assert_eq!(runs[0].time_started, time(7, 15, 0, 0));
 }
 
 // @spec QE-015
@@ -99,8 +96,8 @@ fn invalid_edit_submission_keeps_fields_and_edit_mode() {
 #[test]
 fn edit_key_loads_the_selected_run_into_the_form() {
     let conn = memory_db();
-    let date = NaiveDate::from_ymd_opt(2020, 5, 9).unwrap();
-    let time = NaiveTime::from_hms_opt(6, 4, 3).unwrap();
+    let date = date(2020, 5, 9);
+    let time = time(6, 4, 3, 0);
     let run = Run::new(date, time, 3.5, Some("hilly".into())).unwrap();
     let id = db::queries::insert_run(&conn, &run).unwrap();
     let mut app = App::new();

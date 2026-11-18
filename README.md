@@ -172,7 +172,7 @@ Built with:
 - **Ratatui**: TUI framework
 - **Crossterm**: Cross-platform terminal backend
 - **SQLite**: Embedded database (via rusqlite)
-- **Chrono**: Date and time handling
+- **Jiff**: Date and time handling
 
 Project structure:
 - `src/db/`: Database layer (schema, queries, connection)

@@ -7,11 +7,8 @@ fn read_accepts_fractional_start_times_and_truncates_them() {
     insert_raw(&conn, "2026-10-01", "11:51:04.165846", 1.5);
     let runs = get_all_runs(&conn).unwrap();
     assert_eq!(runs.len(), 1);
-    assert_eq!(
-        runs[0].time_started,
-        NaiveTime::from_hms_opt(11, 51, 4).unwrap()
-    );
-    assert_eq!(runs[0].time_started.nanosecond(), 0);
+    assert_eq!(runs[0].time_started, civil::time(11, 51, 4, 0));
+    assert_eq!(runs[0].time_started.subsec_nanosecond(), 0);
 }
 
 // @spec STORE-015
@@ -66,4 +63,21 @@ fn unreadable_distance_fails_the_read_naming_the_run() {
         "{err}"
     );
     assert!(err.contains("\"abc\""), "{err}");
+}
+
+// @spec STORE-008
+#[test]
+fn read_accepts_creation_timestamps_with_z_or_numeric_utc_offset() {
+    let conn = memory_db();
+    conn.execute_batch(
+        "INSERT INTO runs (date, time_started, distance_miles, note, created_at) VALUES
+             ('2026-10-01', '07:00:00', 1.0, NULL, '2026-01-01T12:30:00.25Z'),
+             ('2026-10-02', '07:00:00', 1.0, NULL, '2026-01-01T12:30:00.25+00:00'),
+             ('2026-10-03', '07:00:00', 1.0, NULL, '2026-01-01T07:30:00.25-05:00');",
+    )
+    .unwrap();
+    let runs = get_all_runs(&conn).unwrap();
+    assert_eq!(runs.len(), 3);
+    assert_eq!(runs[0].created_at, runs[1].created_at);
+    assert_eq!(runs[1].created_at, runs[2].created_at);
 }

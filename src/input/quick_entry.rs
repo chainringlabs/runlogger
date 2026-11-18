@@ -5,8 +5,8 @@ use crate::logic::validation::{current_time, format_date, format_time};
 use crate::models::run::Run;
 use crate::{db, logic};
 use anyhow::Result;
-use chrono::Local;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use jiff::ZonedDateTime;
 use rusqlite::Connection;
 
 // @spec QE-002, QE-003, QE-004
@@ -96,7 +96,7 @@ fn save_error_message(e: &anyhow::Error) -> String {
 fn build_run(state: &QuickEntryState) -> Result<Run> {
     let date = logic::validation::parse_date(&state.date)?;
     let time = logic::validation::parse_time(&state.time)?;
-    logic::validation::check_not_future(date, time, Local::now().naive_local())?;
+    logic::validation::check_not_future(date, time, ZonedDateTime::now().datetime())?;
     let distance = logic::validation::parse_distance(&state.distance)?;
     let note = (!state.note.is_empty()).then(|| state.note.clone());
     Run::new(date, time, distance, note)

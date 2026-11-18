@@ -57,8 +57,8 @@ pub fn render(f: &mut Frame, area: Rect, state: &mut RunListState) {
         .iter()
         .enumerate()
         .map(|(i, run)| {
-            let date = run.date.format("%Y-%m-%d").to_string();
-            let time = run.time_started.format("%H:%M:%S").to_string();
+            let date = run.date.strftime("%Y-%m-%d").to_string();
+            let time = run.time_started.strftime("%H:%M:%S").to_string();
             let distance = format!("{:.2}", run.distance_miles);
             let note = run.note.as_deref().unwrap_or("");
 

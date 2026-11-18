@@ -5,6 +5,7 @@ use crate::input::handle_key_event;
 use crate::models::analytics::{Analytics, MonthlyData};
 use crate::test_support::{buffer_text, ch, draw_app, insert_raw, key, locate, memory_db};
 use crossterm::event::KeyCode;
+use jiff::{ToSpan, ZonedDateTime};
 use ratatui::{
     buffer::Buffer,
     style::{Color, Modifier},
@@ -186,8 +187,8 @@ fn totals_week_and_period_panels_show_counts_and_two_decimal_distances() {
 
 /// A run date `days` from the real local today, as stored in the database.
 fn local_date(days: i64) -> String {
-    (chrono::Local::now().date_naive() + chrono::Duration::days(days))
-        .format("%Y-%m-%d")
+    (ZonedDateTime::now().date() + days.days())
+        .strftime("%Y-%m-%d")
         .to_string()
 }
 
@@ -211,7 +212,7 @@ fn opening_analytics_recomputes_from_the_full_history_as_of_today() {
         "future runs are not part of today's history"
     );
     assert_eq!(a.total_distance, 2.0);
-    let today_before = chrono::Local::now().date_naive();
+    let today_before = ZonedDateTime::now().date();
 
     // A run added later is picked up when the screen is opened again with `3`.
     insert_raw(&conn, "2001-03-05", "07:00:00", 3.0);
@@ -224,7 +225,7 @@ fn opening_analytics_recomputes_from_the_full_history_as_of_today() {
     assert_eq!(a.total_distance, 5.0);
     assert_eq!(a.longest_streak, 2);
     let trend_end = a.recent_trend.last().expect("trend").date;
-    let today_after = chrono::Local::now().date_naive();
+    let today_after = ZonedDateTime::now().date();
     assert!(
         trend_end == today_before || trend_end == today_after,
         "trend ends {trend_end}, not today"

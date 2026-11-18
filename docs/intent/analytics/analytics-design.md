@@ -104,4 +104,4 @@ None.
 - Specs: `docs/intent/analytics/analytics-specs.md`
 - Tests: listed in `docs/arrows/analytics.md`
 - Depends on: Storage (`STORE`) for the history read; Navigation (`NAV`) for opening the screen and error handling
-- External: `chrono` 0.4, `ratatui` 0.30
+- External: `jiff` 1, `ratatui` 0.30

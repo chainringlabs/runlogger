@@ -1,26 +1,20 @@
 use super::*;
 use crate::db::migrations::init_database;
 use crate::test_support::{block_writes, insert_raw, memory_db, raw_time};
-use chrono::Timelike;
+use jiff::civil;
 
 mod reads;
 mod startup;
 mod writes;
 
-fn run_at(time: NaiveTime) -> Run {
-    Run::new(
-        NaiveDate::from_ymd_opt(2026, 10, 1).unwrap(),
-        time,
-        2.0,
-        None,
-    )
-    .unwrap()
+fn run_at(time: Time) -> Run {
+    Run::new(civil::date(2026, 10, 1), time, 2.0, None).unwrap()
 }
 
-fn run_on(date: (i32, u32, u32), time: (u32, u32, u32), miles: f64, note: Option<&str>) -> Run {
+fn run_on(date: (i16, i8, i8), time: (i8, i8, i8), miles: f64, note: Option<&str>) -> Run {
     Run::new(
-        NaiveDate::from_ymd_opt(date.0, date.1, date.2).unwrap(),
-        NaiveTime::from_hms_opt(time.0, time.1, time.2).unwrap(),
+        civil::date(date.0, date.1, date.2),
+        civil::time(time.0, time.1, time.2, 0),
         miles,
         note.map(str::to_string),
     )

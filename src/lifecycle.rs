@@ -4,12 +4,12 @@
 use crate::app::App;
 use crate::{input, ui};
 use anyhow::Result;
-use chrono::Local;
 use crossterm::{
     event::{self, Event},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
+use jiff::ZonedDateTime;
 use ratatui::{
     backend::{Backend, CrosstermBackend},
     Terminal,
@@ -90,7 +90,7 @@ where
     B::Error: Send + Sync + 'static,
 {
     loop {
-        let today = Local::now().date_naive();
+        let today = ZonedDateTime::now().date();
         app.tick(today);
         input::refresh_analytics_if_stale(app, conn, today);
         terminal.draw(|f| ui::render(f, app))?;

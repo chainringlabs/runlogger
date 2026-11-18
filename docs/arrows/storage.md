@@ -19,7 +19,7 @@ Local SQLite persistence of the run history — location, schema, stored formats
 
 ### Tests
 - src/db/connection/tests.rs (STORE-001, STORE-002, STORE-003, STORE-018)
-- src/db/queries/tests/reads.rs (STORE-012, STORE-013, STORE-015)
+- src/db/queries/tests/reads.rs (STORE-008, STORE-012, STORE-013, STORE-015)
 - src/db/queries/tests/startup.rs (STORE-003, STORE-014, STORE-016, STORE-017)
 - src/db/queries/tests/writes.rs (STORE-004, STORE-005, STORE-006, STORE-007, STORE-008, STORE-009, STORE-010, STORE-011)
 

@@ -1,6 +1,6 @@
 use crate::models::analytics::{Analytics, DailyData, MonthlyData, YEAR_GOAL_DAYS};
 use crate::models::run::Run;
-use chrono::{Datelike, NaiveDate};
+use jiff::{civil::Date, ToSpan};
 use std::collections::BTreeMap;
 
 pub const DAILY_GOAL_MILES: f64 = 1.0;
@@ -10,7 +10,7 @@ const TREND_DAYS: i64 = 14;
 /// Computes every analytics figure as of `today`. Runs dated after today are
 /// ignored, so all figures describe the same history.
 // @spec AN-002, AN-003, AN-004, AN-005, AN-006, AN-007, AN-015
-pub fn calculate_analytics(runs: &[Run], today: NaiveDate) -> Analytics {
+pub fn calculate_analytics(runs: &[Run], today: Date) -> Analytics {
     let runs: Vec<&Run> = runs.iter().filter(|r| r.date <= today).collect();
     if runs.is_empty() {
         return Analytics::empty();
@@ -18,10 +18,10 @@ pub fn calculate_analytics(runs: &[Run], today: NaiveDate) -> Analytics {
 
     let daily_totals = group_by_date(&runs);
     let today_goal_met = daily_totals.get(&today).is_some_and(|&d| goal_met(d));
-    let (total_runs, average_distance) = window_stats(&runs, NaiveDate::MIN);
+    let (total_runs, average_distance) = window_stats(&runs, Date::MIN);
     let total_distance = runs.iter().map(|r| r.distance_miles).sum();
 
-    let year_start = NaiveDate::from_ymd_opt(today.year(), 1, 1).unwrap();
+    let year_start = today.first_of_year();
     let (runs_this_week, average_distance_this_week) = window_stats(&runs, days_back(today, 6));
     let (runs_this_month, average_distance_this_month) = window_stats(&runs, days_back(today, 29));
     let (runs_this_year, average_distance_this_year) = window_stats(&runs, year_start);
@@ -69,12 +69,12 @@ pub fn goal_met(total_miles: f64) -> bool {
     hundredths(total_miles) >= hundredths(DAILY_GOAL_MILES)
 }
 
-fn days_back(today: NaiveDate, days: i64) -> NaiveDate {
-    today - chrono::Duration::days(days)
+fn days_back(today: Date, days: i64) -> Date {
+    today.checked_sub(days.days()).unwrap_or(Date::MIN)
 }
 
 /// Run count and average distance per run for runs dated on or after `start`.
-fn window_stats(runs: &[&Run], start: NaiveDate) -> (u32, f64) {
+fn window_stats(runs: &[&Run], start: Date) -> (u32, f64) {
     let in_window: Vec<f64> = runs
         .iter()
         .filter(|r| r.date >= start)
@@ -89,8 +89,8 @@ fn window_stats(runs: &[&Run], start: NaiveDate) -> (u32, f64) {
     (count, average)
 }
 
-fn group_by_date(runs: &[&Run]) -> BTreeMap<NaiveDate, f64> {
-    let mut daily_totals: BTreeMap<NaiveDate, f64> = BTreeMap::new();
+fn group_by_date(runs: &[&Run]) -> BTreeMap<Date, f64> {
+    let mut daily_totals: BTreeMap<Date, f64> = BTreeMap::new();
 
     for run in runs {
         *daily_totals.entry(run.date).or_insert(0.0) += run.distance_miles;
@@ -102,15 +102,15 @@ fn group_by_date(runs: &[&Run]) -> BTreeMap<NaiveDate, f64> {
 /// Counts back from today when today is goal-met, otherwise from yesterday:
 /// an unfinished today can extend the streak but never breaks it.
 fn calculate_current_streak(
-    daily_totals: &BTreeMap<NaiveDate, f64>,
-    today: NaiveDate,
+    daily_totals: &BTreeMap<Date, f64>,
+    today: Date,
     today_goal_met: bool,
 ) -> u32 {
     let mut streak = 0;
     let mut current_date = if today_goal_met {
         Some(today)
     } else {
-        today.pred_opt()
+        today.yesterday().ok()
     };
 
     while let Some(date) = current_date {
@@ -118,20 +118,20 @@ fn calculate_current_streak(
             Some(&miles) if goal_met(miles) => streak += 1,
             _ => break,
         }
-        current_date = date.pred_opt();
+        current_date = date.yesterday().ok();
     }
 
     streak
 }
 
-fn calculate_longest_streak(daily_totals: &BTreeMap<NaiveDate, f64>) -> u32 {
+fn calculate_longest_streak(daily_totals: &BTreeMap<Date, f64>) -> u32 {
     let mut longest = 0;
     let mut current = 0;
-    let mut prev_date: Option<NaiveDate> = None;
+    let mut prev_date: Option<Date> = None;
 
     // Oldest to newest over goal-met days only; a gap between them resets the run.
     for (&date, _) in daily_totals.iter().filter(|(_, &miles)| goal_met(miles)) {
-        let continues = prev_date.is_some_and(|prev| prev + chrono::Duration::days(1) == date);
+        let continues = prev_date.is_some_and(|prev| prev.tomorrow().ok() == Some(date));
         current = if continues { current + 1 } else { 1 };
         longest = longest.max(current);
         prev_date = Some(date);
@@ -140,10 +140,7 @@ fn calculate_longest_streak(daily_totals: &BTreeMap<NaiveDate, f64>) -> u32 {
     longest
 }
 
-fn calculate_recent_trend(
-    daily_totals: &BTreeMap<NaiveDate, f64>,
-    today: NaiveDate,
-) -> Vec<DailyData> {
+fn calculate_recent_trend(daily_totals: &BTreeMap<Date, f64>, today: Date) -> Vec<DailyData> {
     (0..TREND_DAYS)
         .rev()
         .map(|back| {
@@ -161,7 +158,10 @@ fn calculate_monthly_breakdown(runs: &[&Run], months: usize) -> Vec<MonthlyData>
     let mut monthly_totals: BTreeMap<(i32, u32), (f64, u32)> = BTreeMap::new();
 
     for run in runs {
-        let key = (run.date.year(), run.date.month());
+        let key = (
+            i32::from(run.date.year()),
+            u32::from(run.date.month().unsigned_abs()),
+        );
         let entry = monthly_totals.entry(key).or_insert((0.0, 0));
         entry.0 += run.distance_miles;
         entry.1 += 1;

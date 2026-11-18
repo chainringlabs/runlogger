@@ -4,7 +4,7 @@ use super::render;
 use crate::app::RunListState;
 use crate::models::run::Run;
 use crate::test_support::{buffer_text, locate};
-use chrono::{NaiveDate, NaiveTime};
+use jiff::civil;
 use ratatui::{
     backend::TestBackend,
     buffer::Buffer,
@@ -19,15 +19,9 @@ fn draw(state: &mut RunListState) -> Buffer {
     terminal.backend().buffer().clone()
 }
 
-fn run(
-    id: i64,
-    date: (i32, u32, u32),
-    time: (u32, u32, u32),
-    miles: f64,
-    note: Option<&str>,
-) -> Run {
-    let date = NaiveDate::from_ymd_opt(date.0, date.1, date.2).unwrap();
-    let time = NaiveTime::from_hms_opt(time.0, time.1, time.2).unwrap();
+fn run(id: i64, date: (i16, i8, i8), time: (i8, i8, i8), miles: f64, note: Option<&str>) -> Run {
+    let date = civil::date(date.0, date.1, date.2);
+    let time = civil::time(time.0, time.1, time.2, 0);
     let mut run = Run::new(date, time, miles, note.map(String::from)).unwrap();
     run.id = Some(id);
     run

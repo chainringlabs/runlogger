@@ -1,4 +1,4 @@
-use chrono::NaiveDate;
+use jiff::civil::Date;
 
 /// The year goal: this many goal-met days per calendar year.
 pub const YEAR_GOAL_DAYS: i32 = 365;
@@ -26,7 +26,7 @@ pub struct Analytics {
 
 #[derive(Debug, Clone)]
 pub struct DailyData {
-    pub date: NaiveDate,
+    pub date: Date,
     pub distance: f64,
 }
 

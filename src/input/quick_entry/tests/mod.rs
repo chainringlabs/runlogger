@@ -4,7 +4,10 @@ use super::*;
 
 use crate::input::handle_key_event;
 use crate::test_support::{ch, insert_raw, key, memory_db};
-use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
+use jiff::{
+    civil::{date, time, Date, DateTime},
+    ZonedDateTime,
+};
 
 mod form;
 mod submit;
@@ -26,10 +29,10 @@ fn type_text(app: &mut App, conn: &Connection, text: &str) {
 fn assert_is_now(date: &str, time: &str) {
     assert_eq!(date.len(), 10, "{date:?}");
     assert_eq!(time.len(), 8, "{time:?}");
-    let shown = NaiveDateTime::parse_from_str(&format!("{date} {time}"), "%Y-%m-%d %H:%M:%S")
+    let shown = DateTime::strptime("%Y-%m-%d %H:%M:%S", format!("{date} {time}"))
         .unwrap_or_else(|e| panic!("{date:?} {time:?}: {e}"));
-    let now = Local::now().naive_local();
-    let gap = (now - shown).num_seconds().abs();
+    let now = ZonedDateTime::now().datetime();
+    let gap = now.duration_since(shown).as_secs().abs();
     assert!(gap <= 5, "{shown} is {gap}s away from {now}");
 }
 

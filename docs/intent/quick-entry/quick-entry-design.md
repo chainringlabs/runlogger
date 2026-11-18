@@ -131,4 +131,4 @@ Run logged successfully!              ← red error takes precedence over green 
 - Specs: `docs/intent/quick-entry/quick-entry-specs.md`
 - Tests: listed in `docs/arrows/quick-entry.md`
 - Depends on: Storage (`STORE`) for insert/update and the stored time format; Navigation (`NAV`) for key routing and the clear trigger; Run List (`RL`) for the edit hand-off and post-edit return
-- External: `chrono` 0.4, `anyhow` 1, `ratatui` 0.30, `crossterm` 0.29
+- External: `jiff` 1, `anyhow` 1, `ratatui` 0.30, `crossterm` 0.29

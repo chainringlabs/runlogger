@@ -1,48 +1,51 @@
+use crate::models::run::whole_seconds;
 use anyhow::{anyhow, Result};
-use chrono::{Local, NaiveDate, NaiveDateTime, NaiveTime, Timelike};
+use jiff::{
+    civil::{Date, DateTime, Time},
+    ZonedDateTime,
+};
 
 // @spec QE-008, QE-011
-pub fn parse_date(date_str: &str) -> Result<NaiveDate> {
+pub fn parse_date(date_str: &str) -> Result<Date> {
     let date_str = date_str.trim();
     if date_str.is_empty() {
-        return Ok(Local::now().naive_local().date());
+        return Ok(ZonedDateTime::now().date());
     }
 
-    NaiveDate::parse_from_str(date_str, "%Y-%m-%d")
-        .or_else(|_| NaiveDate::parse_from_str(date_str, "%m/%d/%Y"))
-        .or_else(|_| NaiveDate::parse_from_str(date_str, "%m-%d-%Y"))
+    Date::strptime("%Y-%m-%d", date_str)
+        .or_else(|_| Date::strptime("%m/%d/%Y", date_str))
+        .or_else(|_| Date::strptime("%m-%d-%Y", date_str))
         .map_err(|_| anyhow!("Invalid date. Use YYYY-MM-DD, MM/DD/YYYY or MM-DD-YYYY"))
 }
 
 // @spec QE-009, QE-010, QE-011
-pub fn parse_time(time_str: &str) -> Result<NaiveTime> {
+pub fn parse_time(time_str: &str) -> Result<Time> {
     let time_str = time_str.trim();
     if time_str.is_empty() {
         return Ok(current_time());
     }
 
-    NaiveTime::parse_from_str(time_str, "%H:%M:%S")
-        .or_else(|_| NaiveTime::parse_from_str(time_str, "%H:%M"))
-        .or_else(|_| NaiveTime::parse_from_str(time_str, "%I:%M %p"))
-        .or_else(|_| NaiveTime::parse_from_str(time_str, "%I:%M:%S %p"))
+    Time::strptime("%H:%M:%S", time_str)
+        .or_else(|_| Time::strptime("%H:%M", time_str))
+        .or_else(|_| Time::strptime("%I:%M %p", time_str))
+        .or_else(|_| Time::strptime("%I:%M:%S %p", time_str))
         .map_err(|_| anyhow!("Invalid time. Use HH:MM, HH:MM:SS or h:MM AM/PM"))
 }
 
 // @spec QE-024
 /// Runs record what has already happened: reject a date and time after `now`.
-pub fn check_not_future(date: NaiveDate, time: NaiveTime, now: NaiveDateTime) -> Result<()> {
+pub fn check_not_future(date: Date, time: Time, now: DateTime) -> Result<()> {
     if date > now.date() {
         return Err(anyhow!("Date cannot be in the future"));
     }
-    if date.and_time(time) > now {
+    if date.to_datetime(time) > now {
         return Err(anyhow!("Time cannot be in the future"));
     }
     Ok(())
 }
 
-pub fn current_time() -> NaiveTime {
-    let now = Local::now().naive_local().time();
-    now.with_nanosecond(0).unwrap_or(now)
+pub fn current_time() -> Time {
+    whole_seconds(ZonedDateTime::now().time())
 }
 
 // @spec QE-012
@@ -60,28 +63,26 @@ pub fn parse_distance(distance_str: &str) -> Result<f64> {
         .ok_or_else(|| anyhow!("Invalid distance. Enter a number (e.g., 3.5)"))
 }
 
-pub fn format_date(date: &NaiveDate) -> String {
-    date.format("%Y-%m-%d").to_string()
+pub fn format_date(date: &Date) -> String {
+    date.strftime("%Y-%m-%d").to_string()
 }
 
-pub fn format_time(time: &NaiveTime) -> String {
-    time.format("%H:%M:%S").to_string()
+pub fn format_time(time: &Time) -> String {
+    time.strftime("%H:%M:%S").to_string()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use jiff::civil::{date, time};
 
-    fn at(y: i32, m: u32, d: u32, h: u32, min: u32) -> (NaiveDate, NaiveTime) {
-        (
-            NaiveDate::from_ymd_opt(y, m, d).unwrap(),
-            NaiveTime::from_hms_opt(h, min, 0).unwrap(),
-        )
+    fn at(y: i16, m: i8, d: i8, h: i8, min: i8) -> (Date, Time) {
+        (date(y, m, d), time(h, min, 0, 0))
     }
 
-    fn now() -> NaiveDateTime {
+    fn now() -> DateTime {
         let (d, t) = at(2026, 10, 12, 17, 55);
-        d.and_time(t)
+        d.to_datetime(t)
     }
 
     // @spec QE-024
@@ -126,15 +127,15 @@ mod tests {
     #[test]
     fn empty_time_uses_current_clock_in_whole_seconds() {
         let time = parse_time("").unwrap();
-        assert_eq!(time.nanosecond(), 0);
+        assert_eq!(time.subsec_nanosecond(), 0);
     }
 
-    fn ymd(y: i32, m: u32, d: u32) -> NaiveDate {
-        NaiveDate::from_ymd_opt(y, m, d).unwrap()
+    fn ymd(y: i16, m: i8, d: i8) -> Date {
+        date(y, m, d)
     }
 
-    fn hms(h: u32, m: u32, s: u32) -> NaiveTime {
-        NaiveTime::from_hms_opt(h, m, s).unwrap()
+    fn hms(h: i8, m: i8, s: i8) -> Time {
+        time(h, m, s, 0)
     }
 
     // @spec QE-008
@@ -148,9 +149,9 @@ mod tests {
     // @spec QE-008
     #[test]
     fn empty_date_uses_today() {
-        let before = Local::now().date_naive();
+        let before = ZonedDateTime::now().date();
         let parsed = parse_date("").unwrap();
-        let after = Local::now().date_naive();
+        let after = ZonedDateTime::now().date();
         assert!(parsed == before || parsed == after, "{parsed}");
     }
 
@@ -200,14 +201,8 @@ mod tests {
     // @spec QE-008, QE-009
     #[test]
     fn spaces_around_date_and_time_are_ignored() {
-        assert_eq!(
-            parse_date("  2026-10-01 ").unwrap(),
-            NaiveDate::from_ymd_opt(2026, 10, 1).unwrap()
-        );
-        assert_eq!(
-            parse_time(" 7:15 AM  ").unwrap(),
-            NaiveTime::from_hms_opt(7, 15, 0).unwrap()
-        );
+        assert_eq!(parse_date("  2026-10-01 ").unwrap(), date(2026, 10, 1));
+        assert_eq!(parse_time(" 7:15 AM  ").unwrap(), time(7, 15, 0, 0));
     }
 
     // @spec QE-012
