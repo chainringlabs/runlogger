@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  # Weekly full scan of main: pull requests fail only on vulnerabilities they
+  # introduce, so this is where an advisory against a merged dependency surfaces.
+  schedule:
+    - cron: "0 13 * * 1" # Mondays 13:00 UTC
 
 env:
   CARGO_TERM_COLOR: always
@@ -17,6 +21,7 @@ concurrency:
 jobs:
   test:
     name: build / lint / test
+    if: ${{ github.event_name != 'schedule' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -35,21 +40,14 @@ jobs:
       - name: Build (release)
         run: cargo build --release --locked
 
-  audit:
-    name: supply-chain audit (cargo-deny)
-    runs-on: ubuntu-latest
+  # The organization's shared scan: Socket, OSV (diff mode on pull requests,
+  # absolute otherwise) and cargo-deny against deny.toml.
+  supply-chain:
+    name: Supply chain
     permissions:
       contents: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
-      - name: cargo-deny (advisories, bans, licenses, sources)
-        uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
-        with:
-          command: check
-
-  supply-chain:
-    name: supply-chain scan (socket / osv)
-    uses: ./.github/workflows/supply-chain.yml
+    uses: chainringlabs/ci/.github/workflows/supply-chain.yml@f8888baa2af7a041fe6a5a11f8fe0be182357cc3 # v1.2.1
+    with:
+      cargo-deny: true
     secrets:
       SOCKET_SECURITY_API_KEY: ${{ secrets.SOCKET_SECURITY_API_KEY }}
